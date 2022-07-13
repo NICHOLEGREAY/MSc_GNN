@@ -78,7 +78,7 @@ class SpGAT_modified(nn.Module):
             nheads -> Used for Multihead attention
 
         """
-        super(SpGAT, self).__init__()
+        super(SpGAT_modified, self).__init__()
         self.dropout = dropout
         self.dropout_layer = nn.Dropout(self.dropout)
         # self.attentions = [SpGraphAttentionLayer(num_nodes, nfeat,
@@ -96,7 +96,7 @@ class SpGAT_modified(nn.Module):
                                                  concat=True)
                            for _ in range(nheads)]
 
-        for i, attention in enumerate(self.attentions):
+        for i, attention in enumerate(self.attentions_modified):
             self.add_module('attention_{}'.format(i), attention)
 
         # W matrix to convert h_input to h_output dimension
@@ -307,7 +307,7 @@ class SpKBGATModified_modified(nn.Module):
         # edge_type_nhop = torch.cat(
         #     [train_indices_nhop[:, 1].unsqueeze(-1), train_indices_nhop[:, 2].unsqueeze(-1)], dim=1)
 
-        edge_list = np.array([batch_inputs[:,2],batch_inputs[:,0]])  # [[e2_id,..],[e1_id,..]]
+        edge_list = torch.concat((batch_inputs[:,2].unsqueeze(-1),batch_inputs[:,0].unsqueeze(-1)),dim=1).t()  # [[e2_id,..],[e1_id,..]]
         edge_type = batch_inputs[:,1]  # [r_id, ..]
 
         if(CUDA):
