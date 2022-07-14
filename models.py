@@ -6,6 +6,7 @@ import time
 from layers import SpGraphAttentionLayer, ConvKB
 from layers import SpGraphAttentionLayer_modified
 import numpy as np
+import pdb
 
 CUDA = torch.cuda.is_available()  # checking cuda availability
 
@@ -132,10 +133,12 @@ class SpGAT_modified(nn.Module):
 
         # edge_embed (N,dim_relation)
         # edge_list:  [[rows], [columns]],  size: (2 , N)
-        edge_embed = relation_embed[edge_type]
+
+        edge_embed = relation_embed[edge_type]      
         edge_h = torch.cat(
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:,:]), dim=1).t()
 
+        
         # edge_h: (2*in_dim + nrela_dim) x E
 
         # x = torch.cat([att(x, edge_list, edge_embed, edge_list_nhop, edge_embed_nhop)
@@ -307,8 +310,8 @@ class SpKBGATModified_modified(nn.Module):
         # edge_type_nhop = torch.cat(
         #     [train_indices_nhop[:, 1].unsqueeze(-1), train_indices_nhop[:, 2].unsqueeze(-1)], dim=1)
 
-        edge_list = torch.concat((batch_inputs[:,2].unsqueeze(-1),batch_inputs[:,0].unsqueeze(-1)),dim=1).t()  # [[e2_id,..],[e1_id,..]]
-        edge_type = batch_inputs[:,1]  # [r_id, ..]
+        edge_list = torch.concat((batch_inputs[:,2].unsqueeze(-1),batch_inputs[:,0].unsqueeze(-1)),dim=1).t()  # [[e2_id,..],[e1_id,..]], size(2,272115)
+        edge_type = batch_inputs[:,1]  # [r_id, ..], size(272115)
 
         if(CUDA):
             edge_list = edge_list.cuda()
@@ -339,6 +342,10 @@ class SpKBGATModified_modified(nn.Module):
             mask.unsqueeze(-1).expand_as(out_entity_1) * out_entity_1
 
         out_entity_1 = F.normalize(out_entity_1, p=2, dim=1)
+        
+        pdb.set_trace()
+        print('out_entity:',out_entity_1,out_entity_1.size())
+        print('out_relation:',out_relation_1,out_relation_1.size())
 
         self.final_entity_embeddings.data = out_entity_1.data
         self.final_relation_embeddings.data = out_relation_1.data

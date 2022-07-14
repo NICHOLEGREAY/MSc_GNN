@@ -4,6 +4,7 @@ import torch.nn as nn
 import time
 import torch.nn.functional as F
 from torch.autograd import Variable
+import pdb
 
 
 CUDA = torch.cuda.is_available()
@@ -192,7 +193,8 @@ class SpGraphAttentionLayer_modified(nn.Module):
 
         edge_m = self.a.mm(edge_h)  # vector representation of a triple ->Cijk ,shape: out_dim × triple_num
         # edge_m: D * E
-
+        print('edge_m;',edge_m, edge_m.size())
+  
         # to be checked later
         powers = -self.leakyrelu(self.a_2.mm(edge_m).squeeze())  # Bijk
         edge_e = torch.exp(powers).unsqueeze(1)  # softmax
@@ -217,10 +219,12 @@ class SpGraphAttentionLayer_modified(nn.Module):
             edge, edge_w, N, edge_w.shape[0], self.out_features)
 
         assert not torch.isnan(h_prime).any()
-        # h_prime: N x out
+        # h_prime: E x out
+        pdb.set_trace()
         h_prime = h_prime.div(e_rowsum)
 
-        h_prime = torch.where(torch.isnan(h_prime), input, h_prime)  # replace  Nan by the entities not updated
+        # h_prime = torch.where(torch.isnan(h_prime), input, h_prime)  # replace  Nan by the entities not updated
+      
 
         assert not torch.isnan(h_prime).any()
         if self.concat:

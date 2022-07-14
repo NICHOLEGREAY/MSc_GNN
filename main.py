@@ -47,7 +47,7 @@ def parse_args():
     args.add_argument("-w_conv", "--weight_decay_conv", type=float,
                       default=1e-5, help="L2 reglarization for conv")
     args.add_argument("-pre_emb", "--pretrained_emb", type=bool,
-                      default=True, help="Use pretrained embeddings")
+                      default= False, help="Use pretrained embeddings")
     args.add_argument("-emb_size", "--embedding_size", type=int,
                       default=50, help="Size of embeddings (if pretrained not used)")
     args.add_argument("-l", "--lr", type=float, default=1e-3)
@@ -101,7 +101,7 @@ def load_data(args, split_dict, relation_array, entity_array):
     train_data, validation_data, test_data, headTailSelector, unique_entities_train = build_data_modified(
          split_dict, relation_array, is_unweigted=False, directed=True)
 
-    if args.pretrained_emb:
+    if not args.pretrained_emb:
         entity_embeddings, relation_embeddings = init_embeddings(os.path.join(args.data, 'entity2vec.txt'),
                                                                  os.path.join(args.data, 'relation2vec.txt'))
         print("Initialised relations and entities from TransE")
@@ -132,8 +132,8 @@ split_dict['train']['head']  = split_dict['train']['head'][:500000]   #从 16mil
 split_dict['train']['relation']  = split_dict['train']['relation'][:500000]
 split_dict['train']['tail']  = split_dict['train']['tail'][:500000]
 
-entity_array = np.union1d(split_dict['train']['head'],split_dict['train']['tail'])  # 447,948 entities
-relation_array = np.array(list(set(split_dict['train']['relation'])))  # 417 relation types
+entity_array = np.union1d(split_dict['train']['head'],split_dict['train']['tail'])  # 2,500,604 entities
+relation_array = np.array(list(set(split_dict['train']['relation'])))  # 535 relation types
 
 nentity = dataset.graph['num_nodes']  # 2,500,604 nodes
 nrelation = int(max(dataset.graph['edge_reltype'])[0])+1    # 535 relation types
