@@ -47,7 +47,7 @@ def parse_args():
     args.add_argument("-w_conv", "--weight_decay_conv", type=float,
                       default=1e-5, help="L2 reglarization for conv")
     args.add_argument("-pre_emb", "--pretrained_emb", type=bool,
-                      default= False, help="Use pretrained embeddings")
+                      default=False, help="Use pretrained embeddings")
     args.add_argument("-emb_size", "--embedding_size", type=int,
                       default=50, help="Size of embeddings (if pretrained not used)")
     args.add_argument("-l", "--lr", type=float, default=1e-3)
@@ -72,8 +72,9 @@ def parse_args():
                       default=[2, 2], help="Multihead attention SpGAT")
     args.add_argument("-margin", "--margin", type=float,
                       default=5, help="Margin used in hinge loss")
-    # args.add_argument("-layer_size", "--layer_size", type=int,
-    #                   default=2, help="Number of layers of a GNN")
+    args.add_argument("-layer_num", "--layer_num", type=int,
+                      default=2, help="Number of layers of a GNN")
+
 
     # arguments for convolution network
     args.add_argument("-b_conv", "--batch_size_conv", type=int,
@@ -128,12 +129,13 @@ def load_data(args, split_dict, relation_array, entity_array):
 
 dataset = LinkPropPredDataset(name = 'ogbl-wikikg2')
 split_dict = dataset.get_edge_split()
-split_dict['train']['head']  = split_dict['train']['head'][:500000]   #从 16million+中的training triples 取前面 50w个
-split_dict['train']['relation']  = split_dict['train']['relation'][:500000]
-split_dict['train']['tail']  = split_dict['train']['tail'][:500000]
-
+# split_dict['train']['head']  = split_dict['train']['head'][:500000]   #从 16million+中的training triples 取前面 50w个
+# split_dict['train']['relation']  = split_dict['train']['relation'][:500000]
+# split_dict['train']['tail']  = split_dict['train']['tail'][:500000]
+#
 entity_array = np.union1d(split_dict['train']['head'],split_dict['train']['tail'])  # 2,500,604 entities
 relation_array = np.array(list(set(split_dict['train']['relation'])))  # 535 relation types
+
 
 nentity = dataset.graph['num_nodes']  # 2,500,604 nodes
 nrelation = int(max(dataset.graph['edge_reltype'])[0])+1    # 535 relation types
@@ -213,7 +215,7 @@ def train_gat(args):
     # model_gat = SpKBGATModified(entity_embeddings, relation_embeddings, args.entity_out_dim, args.entity_out_dim,
     #                             args.drop_GAT, args.alpha, args.nheads_GAT)
     model_gat_modified = SpKBGATModified_modified(entity_embeddings, relation_embeddings, args.entity_out_dim, args.entity_out_dim,
-                                args.drop_GAT, args.alpha, args.nheads_GAT)
+                                args.drop_GAT, args.alpha, args.nheads_GAT, args.layer_num)
 
     if CUDA:
         model_gat_modified.cuda()
@@ -285,7 +287,7 @@ def train_gat(args):
 
             unique_entities_number = Corpus_.get_unique_entites_number(batch_inputs)
             entity_embed, relation_embed = model_gat_modified(
-                Corpus_, unique_entities_number, batch_inputs)  # 时间
+                Corpus_, batch_inputs)  # 时间
 
             print("Iteration-> {0}  , forward_time-> {1:.4f} ".format(
                 iters, time.time() - start_time_forward))

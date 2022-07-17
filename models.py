@@ -6,7 +6,7 @@ import time
 from layers import SpGraphAttentionLayer, ConvKB
 from layers import SpGraphAttentionLayer_modified
 import numpy as np
-import pdb
+import utils
 
 CUDA = torch.cuda.is_available()  # checking cuda availability
 
@@ -69,7 +69,7 @@ class SpGAT(nn.Module):
         return x, out_relation_1
 
 class SpGAT_modified(nn.Module):
-    def __init__(self, num_nodes, nfeat, nhid, relation_dim, dropout, alpha, nheads):
+    def __init__(self, num_nodes, nfeat, nhid, relation_dim, dropout, alpha, nheads, layer_num):
         """
             Sparse version of GAT
             nfeat -> Entity Input Embedding dimensions
@@ -77,11 +77,14 @@ class SpGAT_modified(nn.Module):
             relation_dim -> Relation Embedding dimensions
             num_nodes -> number of nodes in the Graph
             nheads -> Used for Multihead attention
+            layer_num -> number of layers (default >= 2)
 
         """
         super(SpGAT_modified, self).__init__()
         self.dropout = dropout
         self.dropout_layer = nn.Dropout(self.dropout)
+        self.layer_num = layer_num
+        self.nheads= nheads
         # self.attentions = [SpGraphAttentionLayer(num_nodes, nfeat,
         #                                          nhid,
         #                                          relation_dim,
@@ -89,20 +92,58 @@ class SpGAT_modified(nn.Module):
         #                                          alpha=alpha,
         #                                          concat=True)
         #                    for _ in range(nheads)]
-        self.attentions_modified = [SpGraphAttentionLayer_modified(num_nodes, nfeat,
-                                                 nhid,
-                                                 relation_dim,
-                                                 dropout=dropout,
-                                                 alpha=alpha,
-                                                 concat=True)
-                           for _ in range(nheads)]
 
-        for i, attention in enumerate(self.attentions_modified):
-            self.add_module('attention_{}'.format(i), attention)
+        self.attentions_modified = []
+        for l in range(self.layer_num):   # initialize all attention layers with multiple heads
+            attentions_layer = []
+            if l == 0:   # the first layer
+                for _ in range(nheads):
+                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nfeat,
+                                                         nhid,
+                                                         relation_dim,
+                                                         dropout=dropout,
+                                                         alpha=alpha,
+                                                         concat=True))
+            elif l == layer_num-1:   # the final layer
+                attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
+                                                                       nfeat,
+                                                                       nhid,
+                                                                       dropout=dropout,
+                                                                       alpha=alpha,
+                                                                       concat=False))
+            else:
+                for _ in range(nheads):
+                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes,  nhid * nheads,
+                                                                           nhid,
+                                                                           nhid,
+                                                                           dropout=dropout,
+                                                                           alpha=alpha,
+                                                                           concat=True))
+
+            for i, attention in enumerate(attentions_layer):
+                self.add_module('attention_{}'.format(i), attention)
+
+            self.attentions_modified.append(attentions_layer)
+
 
         # W matrix to convert h_input to h_output dimension
-        self.W = nn.Parameter(torch.zeros(size=(relation_dim, nheads * nhid)))
-        nn.init.xavier_uniform_(self.W.data, gain=1.414)
+        # self.W = nn.Parameter(torch.zeros(size=(relation_dim, nheads * nhid)))
+
+        self.W = []   # if only 2 layers -> one value, elif more than 2 layers -> two values
+        if self.layer_num == 2:
+            self.W.append(nn.Parameter(torch.zeros(size=(relation_dim,  nhid))))
+            nn.init.xavier_uniform_(self.W[0].data, gain=1.414)
+        elif self.layer_num > 2:
+            self.W.append(nn.Parameter(torch.zeros(size=(nhid, nhid))))
+            nn.init.xavier_uniform_(self.W[1].data, gain=1.414)
+
+        self.W_source = nn.Parameter(torch.zeros(size=(nfeat,  nhid * nheads)))
+        nn.init.xavier_uniform_(self.W_source.data, gain=1.414)
+
+        self.W_target = nn.Parameter(torch.zeros(size=(nfeat, nfeat)))
+        nn.init.xavier_uniform_(self.W_entities.data, gain=1.414)
+
+        # nn.init.xavier_uniform_(self.W.data, gain=1.414)
 
         # self.out_att = SpGraphAttentionLayer(num_nodes, nhid * nheads,
         #                                      nheads * nhid, nheads * nhid,
@@ -110,15 +151,9 @@ class SpGAT_modified(nn.Module):
         #                                      alpha=alpha,
         #                                      concat=False
         #                                      )
-        self.out_att_modified = SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
-                                             nheads * nhid, nheads * nhid,
-                                             dropout=dropout,
-                                             alpha=alpha,
-                                             concat=False
-                                             )
 
-    def forward(self, Corpus_,  unique_entities_number, entity_embeddings, relation_embed,
-                edge_list, edge_type):
+
+    def forward(self, Corpus_, entity_embeddings, relation_embed, edge_list, edge_type):
         x = entity_embeddings
 
         # edge_type_nhop [[source_relation1, target_relation2], [], ..]
@@ -130,40 +165,70 @@ class SpGAT_modified(nn.Module):
         # edge_embed = torch.cat(
         #     (edge_embed[:, :], edge_embed_nhop[:, :]), dim=0)  # size: N × dim_relation
 
-
-        # edge_embed (N,dim_relation)
-        # edge_list:  [[rows], [columns]],  size: (2 , N)
-
-        edge_embed = relation_embed[edge_type]      
-        edge_h = torch.cat(
-            (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:,:]), dim=1).t()
-
-        
-        # edge_h: (2*in_dim + nrela_dim) x E
-
+        # edge_embed_nhop = relation_embed[  # edge_type_nhop [[source_relation1, target_relation2], [], ..]
+        #                       edge_type_nhop[:, 0]] + relation_embed[
+        #                       edge_type_nhop[:, 1]]  # relation_source, relation_target
         # x = torch.cat([att(x, edge_list, edge_embed, edge_list_nhop, edge_embed_nhop)
         #                for att in self.attentions], dim=1)
 
-        # x = torch.cat([att( N, edge_list, edge_h ) for att in self.attentions], dim=1)
-
-
-        x = torch.cat([att(x, edge_list, edge_h) for att in self.attentions_modified], dim=1)
-
-        x = self.dropout_layer(x)
-
-        out_relation_1 = relation_embed.mm(self.W)
-
-        edge_embed = out_relation_1[edge_type]
+        # x = self.dropout_layer(x)
+        #
+        # out_relation_1 = relation_embed.mm(self.W)
+        #
+        # edge_embed = out_relation_1[edge_type]
         # edge_embed_nhop = out_relation_1[
-        #     edge_type_nhop[:, 0]] + out_relation_1[edge_type_nhop[:, 1]]  # list相加: dim=1
-
+        #                       edge_type_nhop[:, 0]] + out_relation_1[edge_type_nhop[:, 1]]  # list相加: dim=1
+        #
         # x = F.elu(self.out_att(x, edge_list, edge_embed,
         #                        edge_list_nhop, edge_embed_nhop))
 
-        edge_h = torch.cat(
+
+        # edge_list:  [[rows], [columns]],  size: (2 , N)
+
+        #tansfer scatter entity id in the mini-batch to continous entity id
+        scatter_entity_array = np.union1d(edge_list[0].numpy(),edge_list[1].numpy())  # automatic sorting
+        scatter_source_array = np.setdiff1d(edge_list[1].numpy(), edge_list[0].numpy())  # automatic sorting
+        scatter_target_array = np.unique(edge_list[0].numpy())  # automatic sorting
+        scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity_array)   # key: scatter_id, value:continuous_id
+        entity_continuous_list = []
+        entity_target_continuous = []
+        entity_source_continuous = []
+        for i in range(len(edge_list[0])):
+            entity_target_continuous.append(scatter_continuous_dict[edge_list[0][i]])
+        entity_continuous_list.append(entity_target_continuous)
+        for i in range(len(edge_list[1])):
+            entity_source_continuous.append(scatter_continuous_dict[edge_list[1][i]])
+        entity_continuous_list.append(entity_source_continuous)
+
+        entity_source_embed = entity_embeddings[scatter_source_array, :].mm(self.W_source)
+        entity_target_embed = entity_embeddings[scatter_target_array, :].mm(self.W_target)
+
+        edge_embed = relation_embed[edge_type]  # edge_embed (N,dim_relation)
+        edge_h = torch.cat(  # edge_h: (2*in_dim + nrela_dim) x E
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:, :]), dim=1).t()
-        x = F.elu(self.out_att_modified(x, edge_list, edge_h))
-        return x, out_relation_1
+
+        for l in self.layer_num:
+            x = torch.cat([att(len(scatter_entity_array), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
+            if l == self.layer_num-1:      # the final layer
+                x = F.elu(x)
+            else:
+                x = self.dropout_layer(x)
+                for i in range(len(scatter_source_array)):
+                    x[scatter_continuous_dict[scatter_source_array[i]],:] = entity_source_embed[i]  # reassign the unique source entities
+                if l == 0:         # the first layer
+                    out_relation_1 = relation_embed.mm(self.W[0])   # update relation embeddings
+                else:
+                    out_relation_1 = relation_embed.mm(self.W[1])
+                edge_embed = out_relation_1[edge_type]
+                edge_h = torch.cat(
+                    (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
+
+        for i in range(len(scatter_target_array)):   # target entity
+            entity_embeddings[scatter_target_array[i]] = x[scatter_continuous_dict[scatter_target_array[i]],:] \
+                                                             + entity_target_embed[i]
+
+        entity_embeddings = F.normalize(entity_embeddings, p=2, dim=1)
+        return entity_embeddings, out_relation_1   #nfeat, nhid
 
 
 class SpKBGATModified(nn.Module):
@@ -258,7 +323,7 @@ class SpKBGATModified(nn.Module):
 
 class SpKBGATModified_modified(nn.Module):
     def __init__(self, initial_entity_emb, initial_relation_emb, entity_out_dim, relation_out_dim,
-                 drop_GAT, alpha, nheads_GAT):
+                 drop_GAT, alpha, nheads_GAT, layer_num):
         '''Sparse version of KBGAT
         entity_in_dim -> Entity Input Embedding dimensions
         entity_out_dim  -> Entity Output Embedding dimensions, passed as a list
@@ -290,17 +355,19 @@ class SpKBGATModified_modified(nn.Module):
         self.final_relation_embeddings = nn.Parameter(
             torch.randn(self.num_relation, self.entity_out_dim_1 * self.nheads_GAT_1))
 
-        self.entity_embeddings = nn.Parameter(initial_entity_emb)
-        self.relation_embeddings = nn.Parameter(initial_relation_emb)
+        self.entity_embeddings = nn.Parameter(initial_entity_emb)  # Size([2500604, 50])
+        self.relation_embeddings = nn.Parameter(initial_relation_emb)  #Size([535, 50])
+        # self.sparse_gat_1 = SpGAT(self.num_nodes, self.entity_in_dim, self.entity_out_dim_1, self.relation_dim,
+        #                           self.drop_GAT, self.alpha, self.nheads_GAT_1)
 
         self.sparse_gat_1_modified = SpGAT_modified(self.num_nodes, self.entity_in_dim, self.entity_out_dim_1, self.relation_dim,
-                                  self.drop_GAT, self.alpha, self.nheads_GAT_1)
+                                  self.drop_GAT, self.alpha, self.nheads_GAT_1, layer_num)
 
-        self.W_entities = nn.Parameter(torch.zeros(
-            size=(self.entity_in_dim, self.entity_out_dim_1 * self.nheads_GAT_1)))
-        nn.init.xavier_uniform_(self.W_entities.data, gain=1.414)
+        # self.W_entities = nn.Parameter(torch.zeros(
+        #         size=(self.entity_in_dim, self.entity_out_dim_1 * self.nheads_GAT_1)))
 
-    def forward(self, Corpus_, unique_entities_number, batch_inputs):    # train_indices_nhop: [[source_entity_train, relation_source, relation_target, target_entity_train],[], ...]
+
+    def forward(self, Corpus_, batch_inputs):    # train_indices_nhop: [[source_entity_train, relation_source, relation_target, target_entity_train],[], ...]
         # getting edge list                                               # batch_inputs:  [ : valid triples for one batch]
         # edge_list = adj[0]   # [[e2_id,..],[e1_id,..]]
         # edge_type = adj[1]   # [r_id, ..]
@@ -311,7 +378,7 @@ class SpKBGATModified_modified(nn.Module):
         #     [train_indices_nhop[:, 1].unsqueeze(-1), train_indices_nhop[:, 2].unsqueeze(-1)], dim=1)
 
         edge_list = torch.concat((batch_inputs[:,2].unsqueeze(-1),batch_inputs[:,0].unsqueeze(-1)),dim=1).t()  # [[e2_id,..],[e1_id,..]], size(2,272115)
-        edge_type = batch_inputs[:,1]  # [r_id, ..], size(272115)
+        edge_type = batch_inputs[:,1]  # [r_id, ..] , size(272115)
 
         if(CUDA):
             edge_list = edge_list.cuda()
@@ -330,25 +397,21 @@ class SpKBGATModified_modified(nn.Module):
         #     self.relation_embeddings.data, p=2, dim=1)
 
         out_entity_1, out_relation_1 = self.sparse_gat_1_modified(
-            Corpus_,  unique_entities_number, self.entity_embeddings, self.relation_embeddings,
+            Corpus_,  self.entity_embeddings, self.relation_embeddings,
             edge_list, edge_type)
 
-        mask_indices = torch.unique(batch_inputs[:, 2]).cuda()  # unique value set
-        mask = torch.zeros(self.entity_embeddings.shape[0]).cuda()
-        mask[mask_indices] = 1.0
+        # mask_indices = torch.unique(batch_inputs[:, 2]).cuda()  # the set containing unique target entities (updated within this batch_inputs)
+        # mask = torch.zeros(self.entity_embeddings.shape[0]).cuda()
+        # mask[mask_indices] = 1.0
+        #
+        # entities_upgraded = self.entity_embeddings.mm(self.W_entities)
+        # out_entity_1 = entities_upgraded + \
+        #     mask.unsqueeze(-1).expand_as(out_entity_1) * out_entity_1
+        #
+        # out_entity_1 = F.normalize(out_entity_1, p=2, dim=1)
 
-        entities_upgraded = self.entity_embeddings.mm(self.W_entities)
-        out_entity_1 = entities_upgraded + \
-            mask.unsqueeze(-1).expand_as(out_entity_1) * out_entity_1
-
-        out_entity_1 = F.normalize(out_entity_1, p=2, dim=1)
-        
-        pdb.set_trace()
-        print('out_entity:',out_entity_1,out_entity_1.size())
-        print('out_relation:',out_relation_1,out_relation_1.size())
-
-        self.final_entity_embeddings.data = out_entity_1.data
-        self.final_relation_embeddings.data = out_relation_1.data
+        self.final_entity_embeddings.data = out_entity_1.data      # torch.Size([2500604, 200])
+        self.final_relation_embeddings.data = out_relation_1.data   # torch.Size([535, 200])
 
         return out_entity_1, out_relation_1
 

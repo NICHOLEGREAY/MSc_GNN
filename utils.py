@@ -134,3 +134,12 @@ def plot_grad_flow_low(named_parameters, parameters):
     plt.grid(True)
     plt.savefig('initial.png')
     plt.close()
+
+def scatter_map_continuous(unique_entity_array):
+    scatter_continuous_dict ={}
+    for i in range(len(unique_entity_array)):
+        scatter_continuous_dict[unique_entity_array[i]] = i
+    return scatter_continuous_dict
+
+
+

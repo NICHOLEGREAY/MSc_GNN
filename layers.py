@@ -4,7 +4,6 @@ import torch.nn as nn
 import time
 import torch.nn.functional as F
 from torch.autograd import Variable
-import pdb
 
 
 CUDA = torch.cuda.is_available()
@@ -141,7 +140,7 @@ class SpGraphAttentionLayer(nn.Module):
         assert not torch.isnan(h_prime).any()
         # h_prime: N x out
         h_prime = h_prime.div(e_rowsum)
-        # h_prime: N x out
+
 
         assert not torch.isnan(h_prime).any()
         if self.concat:
@@ -179,9 +178,9 @@ class SpGraphAttentionLayer_modified(nn.Module):
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.special_spmm_final = SpecialSpmmFinal()
 
-    def forward(self, input,edge, edge_h):
-        N = input.size()[0]
-
+    def forward(self, N, edge_continuous, edge_h):
+        # N is the number of unique entities within this mini-batch   (|source_entity|+|target_entity|)
+        # N = input.size()[0]
         # Self-attention on the nodes - Shared attention mechanism
         # edge = torch.cat((edge[:, :], edge_list_nhop[:, :]), dim=1)  # size : 2 × N   [[rows], [columns]]
         # edge_embed = torch.cat(
@@ -193,16 +192,14 @@ class SpGraphAttentionLayer_modified(nn.Module):
 
         edge_m = self.a.mm(edge_h)  # vector representation of a triple ->Cijk ,shape: out_dim × triple_num
         # edge_m: D * E
-        print('edge_m;',edge_m, edge_m.size())
-  
+
         # to be checked later
         powers = -self.leakyrelu(self.a_2.mm(edge_m).squeeze())  # Bijk
         edge_e = torch.exp(powers).unsqueeze(1)  # softmax
         assert not torch.isnan(edge_e).any()
         # edge_e: E
-
         e_rowsum = self.special_spmm_final(
-            edge, edge_e, N, edge_e.shape[0], 1)
+            edge_continuous, edge_e, N, edge_e.shape[0], 1)
         e_rowsum[e_rowsum == 0.0] = 1e-12
 
         e_rowsum = e_rowsum
@@ -216,15 +213,13 @@ class SpGraphAttentionLayer_modified(nn.Module):
         # edge_w: E * D
 
         h_prime = self.special_spmm_final(
-            edge, edge_w, N, edge_w.shape[0], self.out_features)
+            edge_continuous, edge_w, N, edge_w.shape[0], self.out_features)
 
         assert not torch.isnan(h_prime).any()
-        # h_prime: E x out
-        pdb.set_trace()
+        # h_prime: N x out
         h_prime = h_prime.div(e_rowsum)
 
-        # h_prime = torch.where(torch.isnan(h_prime), input, h_prime)  # replace  Nan by the entities not updated
-      
+        # h_prime = torch.where(torch.iszero(h_prime), input, h_prime)  # replace  Nan by the entities not updated
 
         assert not torch.isnan(h_prime).any()
         if self.concat:
