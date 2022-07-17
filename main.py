@@ -94,6 +94,9 @@ def parse_args():
 
 args = parse_args()
 # %%
+print('args.get_2hop', args.get_2hop)
+print('args.use_2hop',args.use_2hop)
+print('args.pretrained_emb',args.pretrained_emb)
 
 
 def load_data(args, split_dict, relation_array, entity_array):
@@ -102,7 +105,7 @@ def load_data(args, split_dict, relation_array, entity_array):
     train_data, validation_data, test_data, headTailSelector, unique_entities_train = build_data_modified(
          split_dict, relation_array, is_unweigted=False, directed=True)
 
-    if not args.pretrained_emb:
+    if args.pretrained_emb:
         entity_embeddings, relation_embeddings = init_embeddings(os.path.join(args.data, 'entity2vec.txt'),
                                                                  os.path.join(args.data, 'relation2vec.txt'))
         print("Initialised relations and entities from TransE")
@@ -141,7 +144,7 @@ nentity = dataset.graph['num_nodes']  # 2,500,604 nodes
 nrelation = int(max(dataset.graph['edge_reltype'])[0])+1    # 535 relation types
 
 with open('./outprint.txt','w') as f:
-    Corpus_, entity_embeddings, relation_embeddings = load_data(args,split_dict, relation_array, entity_array)  #时间久
+    Corpus_, entity_embeddings, relation_embeddings = load_data(args,split_dict, relation_array, entity_array)  #时
 
 
 if(args.get_2hop):
@@ -444,7 +447,3 @@ train_conv(args)
   # t2 = time.time()
   # f.write("ConvKB training time: {}\n". format(t2-t1))
 
-  #t1= time.time()
-evaluate_conv(args, Corpus_.unique_entities_train)
-  # t2 = time.time()
-  # f.write("Evaluation time: {}\n". format(t2-t1))

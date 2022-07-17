@@ -141,7 +141,7 @@ class SpGAT_modified(nn.Module):
         nn.init.xavier_uniform_(self.W_source.data, gain=1.414)
 
         self.W_target = nn.Parameter(torch.zeros(size=(nfeat, nfeat)))
-        nn.init.xavier_uniform_(self.W_entities.data, gain=1.414)
+        nn.init.xavier_uniform_(self.W_target.data, gain=1.414)
 
         # nn.init.xavier_uniform_(self.W.data, gain=1.414)
 
