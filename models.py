@@ -141,7 +141,7 @@ class SpGAT_modified(nn.Module):
         nn.init.xavier_uniform_(self.W_source.data, gain=1.414)
 
         self.W_target = nn.Parameter(torch.zeros(size=(nfeat, nfeat)))
-        nn.init.xavier_uniform_(self.W_entities.data, gain=1.414)
+        nn.init.xavier_uniform_(self.W_target.data, gain=1.414)
 
         # nn.init.xavier_uniform_(self.W.data, gain=1.414)
 
@@ -186,10 +186,11 @@ class SpGAT_modified(nn.Module):
         # edge_list:  [[rows], [columns]],  size: (2 , N)
 
         #tansfer scatter entity id in the mini-batch to continous entity id
-        scatter_entity_array = np.union1d(edge_list[0].numpy(),edge_list[1].numpy())  # automatic sorting
-        scatter_source_array = np.setdiff1d(edge_list[1].numpy(), edge_list[0].numpy())  # automatic sorting
-        scatter_target_array = np.unique(edge_list[0].numpy())  # automatic sorting
-        scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity_array)   # key: scatter_id, value:continuous_id
+        combined = torch.cat((edge_list[0].numpy(),edge_list[1].numpy()))
+        scatter_entity, counts = combined.unique(return_counts=True)  # automatic sorting
+        scatter_source = torch.unique(torch.tensor([s for s in edge_list[1] if s not in scatter_entity[counts == 1]])) # automatic sorting
+        scatter_target = torch.unique(edge_list[0]).cuda()  # automatic sorting
+        scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity)   # key: scatter_id, value:continuous_id
         entity_continuous_list = []
         entity_target_continuous = []
         entity_source_continuous = []
@@ -200,21 +201,21 @@ class SpGAT_modified(nn.Module):
             entity_source_continuous.append(scatter_continuous_dict[edge_list[1][i]])
         entity_continuous_list.append(entity_source_continuous)
 
-        entity_source_embed = entity_embeddings[scatter_source_array, :].mm(self.W_source)
-        entity_target_embed = entity_embeddings[scatter_target_array, :].mm(self.W_target)
+        entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
+        entity_target_embed = entity_embeddings[scatter_target, :].mm(self.W_target)
 
         edge_embed = relation_embed[edge_type]  # edge_embed (N,dim_relation)
         edge_h = torch.cat(  # edge_h: (2*in_dim + nrela_dim) x E
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:, :]), dim=1).t()
 
         for l in self.layer_num:
-            x = torch.cat([att(len(scatter_entity_array), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
+            x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
             if l == self.layer_num-1:      # the final layer
                 x = F.elu(x)
             else:
                 x = self.dropout_layer(x)
-                for i in range(len(scatter_source_array)):
-                    x[scatter_continuous_dict[scatter_source_array[i]],:] = entity_source_embed[i]  # reassign the unique source entities
+                for i in range(len(scatter_source)):
+                    x[scatter_continuous_dict[scatter_source[i]],:] = entity_source_embed[i]  # reassign the unique source entities
                 if l == 0:         # the first layer
                     out_relation_1 = relation_embed.mm(self.W[0])   # update relation embeddings
                 else:
@@ -223,8 +224,8 @@ class SpGAT_modified(nn.Module):
                 edge_h = torch.cat(
                     (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
 
-        for i in range(len(scatter_target_array)):   # target entity
-            entity_embeddings[scatter_target_array[i]] = x[scatter_continuous_dict[scatter_target_array[i]],:] \
+        for i in range(len(scatter_target)):   # target entity
+            entity_embeddings[scatter_target[i]] = x[scatter_continuous_dict[scatter_target[i]],:] \
                                                              + entity_target_embed[i]
 
         entity_embeddings = F.normalize(entity_embeddings, p=2, dim=1)
