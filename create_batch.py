@@ -39,7 +39,7 @@ class Corpus:
 
         if(get_2hop):
             self.graph = self.get_graph()  # for train data
-            self.node_neighbors_2hop = self.get_further_neighbors()   #时间久 , {source:{distance:[((relations,),(entities, )),....]} }
+            # self.node_neighbors_2hop = self.get_further_neighbors()   #时间久 , {source:{distance:[((relations,),(entities, )),....]} }
 
         # self.unique_entities_train = [self.entity2id[i]
         #                               for i in unique_entities_train]

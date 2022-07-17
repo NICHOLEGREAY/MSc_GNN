@@ -52,7 +52,7 @@ def parse_args():
                       default=50, help="Size of embeddings (if pretrained not used)")
     args.add_argument("-l", "--lr", type=float, default=1e-3)
     args.add_argument("-g2hop", "--get_2hop", type=bool, default=False)
-    args.add_argument("-u2hop", "--use_2hop", type=bool, default=True)
+    args.add_argument("-u2hop", "--use_2hop", type=bool, default=False)
     args.add_argument("-p2hop", "--partial_2hop", type=bool, default=False)
     args.add_argument("-outfolder", "--output_folder",
                       default="./checkpoints/wn/out/", help="Folder name to save the models.")
@@ -228,17 +228,17 @@ def train_gat(args):
 
     gat_loss_func = nn.MarginRankingLoss(margin=args.margin)
 
-    current_batch_2hop_indices = torch.tensor([])
-    if(args.use_2hop):
-        current_batch_2hop_indices = Corpus_.get_batch_nhop_neighbors_all(args,
-                                                                          Corpus_.unique_entities_train, node_neighbors_2hop)
+    # current_batch_2hop_indices = torch.tensor([])
+    # if(args.use_2hop):
+    #     current_batch_2hop_indices = Corpus_.get_batch_nhop_neighbors_all(args, \
+    #                                                                       Corpus_.unique_entities_train, node_neighbors_2hop)
                                                         # tensor[[source_entity_train, relation_source, relation_target, target_entity_train],[], ...]
-    if CUDA:
-        current_batch_2hop_indices = Variable(
-            torch.LongTensor(current_batch_2hop_indices)).cuda()
-    else:
-        current_batch_2hop_indices = Variable(
-            torch.LongTensor(current_batch_2hop_indices))
+    # if CUDA:
+    #     current_batch_2hop_indices = Variable(
+    #         torch.LongTensor(current_batch_2hop_indices)).cuda()
+    # else:
+    #     current_batch_2hop_indices = Variable(
+    #         torch.LongTensor(current_batch_2hop_indices))
 
     epoch_losses = []   # losses of all epochs
     print("Number of epochs {}".format(args.epochs_gat))
@@ -285,9 +285,8 @@ def train_gat(args):
                 train_indices.shape[0] / (int(args.valid_invalid_ratio_gat) + 1))
             batch_inputs = train_indices[:len_pos_triples]
 
-            unique_entities_number = Corpus_.get_unique_entites_number(batch_inputs)
-            entity_embed, relation_embed = model_gat_modified(
-                Corpus_, batch_inputs)  # 时间
+            # unique_entities_number = Corpus_.get_unique_entites_number(batch_inputs)
+            entity_embed, relation_embed = model_gat_modified(Corpus_, batch_inputs)  # 时间
 
             print("Iteration-> {0}  , forward_time-> {1:.4f} ".format(
                 iters, time.time() - start_time_forward))
