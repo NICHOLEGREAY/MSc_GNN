@@ -1,7 +1,7 @@
 import torch
 # from torchviz import make_dot, make_dot_from_trace
-from models import SpKBGATModified, SpKBGATConvOnly
-from layers import ConvKB
+# from models import SpKBGATModified, SpKBGATConvOnly
+# from layers import ConvKB
 from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
