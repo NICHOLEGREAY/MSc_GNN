@@ -7,7 +7,6 @@ from layers import SpGraphAttentionLayer, ConvKB
 from layers import SpGraphAttentionLayer_modified
 import numpy as np
 import utils
-import pdb
 
 CUDA = torch.cuda.is_available()  # checking cuda availability
 
@@ -122,17 +121,9 @@ class SpGAT_modified(nn.Module):
                                                                            alpha=alpha,
                                                                            concat=True))
 
-<<<<<<< HEAD
-            for i, attention in enumerate(attentions_layer):
-                self.add_module('attention_{}'.format(i), attention)
-
-            self.attentions_modified.append(attentions_layer)
-            self.attentions_modified = nn.ModuleList(self.attentions_modified)
-=======
         for i, attention in enumerate(self.attentions_modified):
             self.add_module('attention_{}'.format(i), attention)
 
->>>>>>> origin
 
         # W matrix to convert h_input to h_output dimension
         # self.W = nn.Parameter(torch.zeros(size=(relation_dim, nheads * nhid)))
@@ -209,11 +200,6 @@ class SpGAT_modified(nn.Module):
         entity_continuous_list.append(entity_source_continuous)
         if (CUDA):
             entity_continuous_list = torch.tensor(entity_continuous_list).cuda()
-<<<<<<< HEAD
-
-        print('scatter_source:',scatter_source)
-=======
->>>>>>> origin
 
         entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
         entity_target_embed = entity_embeddings[scatter_target, :].mm(self.W_target)
@@ -221,14 +207,8 @@ class SpGAT_modified(nn.Module):
         edge_embed = relation_embed[edge_type]  # edge_embed (N,dim_relation)
         edge_h = torch.cat(  # edge_h: (2*in_dim + nrela_dim) x E
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:, :]), dim=1).t()
-        
-        pdb.set_trace()
 
         for l in range(self.layer_num):
-<<<<<<< HEAD
-            x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
-=======
->>>>>>> origin
             if l == self.layer_num-1:      # the final layer
                 x = self.attentions_modified[-1](len(scatter_entity), entity_continuous_list, edge_h)
                 x = F.elu(x)
@@ -245,7 +225,7 @@ class SpGAT_modified(nn.Module):
                 edge_embed = out_relation_1[edge_type]
                 edge_h = torch.cat(
                     (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
-        
+
         for i in range(len(scatter_target)):   # target entity
             entity_embeddings[scatter_target[i]] = x[scatter_continuous_dict[scatter_target[i].item()],:] \
                                                              + entity_target_embed[i]
