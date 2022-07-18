@@ -4,6 +4,7 @@ import torch.nn as nn
 import time
 import torch.nn.functional as F
 from torch.autograd import Variable
+import pdb
 
 
 CUDA = torch.cuda.is_available()
@@ -101,7 +102,7 @@ class SpGraphAttentionLayer(nn.Module):
 
     def forward(self, input, edge, edge_embed, edge_list_nhop, edge_embed_nhop):
         N = input.size()[0]
-
+        pdb.set_trace()
         # Self-attention on the nodes - Shared attention mechanism
         edge = torch.cat((edge[:, :], edge_list_nhop[:, :]), dim=1)    # size : 2 × N   [[rows], [columns]]
         edge_embed = torch.cat(
