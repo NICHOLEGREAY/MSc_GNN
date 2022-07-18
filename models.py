@@ -84,7 +84,7 @@ class SpGAT_modified(nn.Module):
         self.dropout = dropout
         self.dropout_layer = nn.Dropout(self.dropout)
         self.layer_num = layer_num
-        self.nheads= nheads
+        self.nheads = nheads
         # self.attentions = [SpGraphAttentionLayer(num_nodes, nfeat,
         #                                          nhid,
         #                                          relation_dim,
@@ -92,20 +92,21 @@ class SpGAT_modified(nn.Module):
         #                                          alpha=alpha,
         #                                          concat=True)
         #                    for _ in range(nheads)]
+        # for i, attention in enumerate(self.attentions):
+        #     self.add_module('attention_{}'.format(i), attention)
 
         self.attentions_modified = []
         for l in range(self.layer_num):   # initialize all attention layers with multiple heads
-            attentions_layer = []
             if l == 0:   # the first layer
                 for _ in range(nheads):
-                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nfeat,
+                    self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes, nfeat,
                                                          nhid,
                                                          relation_dim,
                                                          dropout=dropout,
                                                          alpha=alpha,
                                                          concat=True))
             elif l == layer_num-1:   # the final layer
-                attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
+                self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
                                                                        nfeat,
                                                                        nhid,
                                                                        dropout=dropout,
@@ -113,29 +114,26 @@ class SpGAT_modified(nn.Module):
                                                                        concat=False))
             else:
                 for _ in range(nheads):
-                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes,  nhid * nheads,
+                    self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes,  nhid * nheads,
                                                                            nhid,
                                                                            nhid,
                                                                            dropout=dropout,
                                                                            alpha=alpha,
                                                                            concat=True))
 
-            for i, attention in enumerate(attentions_layer):
-                self.add_module('attention_{}'.format(i), attention)
-
-            self.attentions_modified.append(attentions_layer)
+        for i, attention in enumerate(self.attentions_modified):
+            self.add_module('attention_{}'.format(i), attention)
 
 
         # W matrix to convert h_input to h_output dimension
         # self.W = nn.Parameter(torch.zeros(size=(relation_dim, nheads * nhid)))
 
-        self.W = []   # if only 2 layers -> one value, elif more than 2 layers -> two values
-        if self.layer_num == 2:
-            self.W.append(nn.Parameter(torch.zeros(size=(relation_dim,  nhid))))
-            nn.init.xavier_uniform_(self.W[0].data, gain=1.414)
-        elif self.layer_num > 2:
-            self.W.append(nn.Parameter(torch.zeros(size=(nhid, nhid))))
-            nn.init.xavier_uniform_(self.W[1].data, gain=1.414)
+         # if only 2 layers -> one value, elif more than 2 layers -> two values
+        self.W1 = nn.Parameter(torch.zeros(size=(relation_dim,  nhid)))
+        nn.init.xavier_uniform_(self.W1.data, gain=1.414)
+        if self.layer_num > 2:
+            self.W2 = nn.Parameter(torch.zeros(size=(nhid, nhid)))
+            nn.init.xavier_uniform_(self.W2.data, gain=1.414)
 
         self.W_source = nn.Parameter(torch.zeros(size=(nfeat,  nhid * nheads)))
         nn.init.xavier_uniform_(self.W_source.data, gain=1.414)
@@ -186,20 +184,22 @@ class SpGAT_modified(nn.Module):
         # edge_list:  [[rows], [columns]],  size: (2 , N)
 
         #tansfer scatter entity id in the mini-batch to continous entity id
-        combined = torch.cat((edge_list[0].numpy(),edge_list[1].numpy()))
+        combined = torch.cat((edge_list[0],edge_list[1]))
         scatter_entity, counts = combined.unique(return_counts=True)  # automatic sorting
         scatter_source = torch.unique(torch.tensor([s for s in edge_list[1] if s not in scatter_entity[counts == 1]])) # automatic sorting
-        scatter_target = torch.unique(edge_list[0]).cuda()  # automatic sorting
+        scatter_target = torch.unique(edge_list[0])  # automatic sorting
         scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity)   # key: scatter_id, value:continuous_id
         entity_continuous_list = []
         entity_target_continuous = []
         entity_source_continuous = []
         for i in range(len(edge_list[0])):
-            entity_target_continuous.append(scatter_continuous_dict[edge_list[0][i]])
+            entity_target_continuous.append(scatter_continuous_dict[edge_list[0][i].item()])
         entity_continuous_list.append(entity_target_continuous)
         for i in range(len(edge_list[1])):
-            entity_source_continuous.append(scatter_continuous_dict[edge_list[1][i]])
+            entity_source_continuous.append(scatter_continuous_dict[edge_list[1][i].item()])
         entity_continuous_list.append(entity_source_continuous)
+        if (CUDA):
+            entity_continuous_list = torch.tensor(entity_continuous_list).cuda()
 
         entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
         entity_target_embed = entity_embeddings[scatter_target, :].mm(self.W_target)
@@ -208,24 +208,26 @@ class SpGAT_modified(nn.Module):
         edge_h = torch.cat(  # edge_h: (2*in_dim + nrela_dim) x E
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:, :]), dim=1).t()
 
-        for l in self.layer_num:
-            x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
+        for l in range(self.layer_num):
             if l == self.layer_num-1:      # the final layer
+                x = self.attentions_modified[-1](len(scatter_entity), entity_continuous_list, edge_h)
                 x = F.elu(x)
             else:
+                x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h)
+                                for att in self.attentions_modified[l * self.nheads: (l + 1) * self.nheads]], dim=1)  # update entity_embeddings
                 x = self.dropout_layer(x)
                 for i in range(len(scatter_source)):
-                    x[scatter_continuous_dict[scatter_source[i]],:] = entity_source_embed[i]  # reassign the unique source entities
+                    x[scatter_continuous_dict[scatter_source[i].item()],:] = entity_source_embed[i]  # reassign the unique source entities
                 if l == 0:         # the first layer
-                    out_relation_1 = relation_embed.mm(self.W[0])   # update relation embeddings
+                    out_relation_1 = relation_embed.mm(self.W1)   # update relation embeddings
                 else:
-                    out_relation_1 = relation_embed.mm(self.W[1])
+                    out_relation_1 = relation_embed.mm(self.W2)
                 edge_embed = out_relation_1[edge_type]
                 edge_h = torch.cat(
                     (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
 
         for i in range(len(scatter_target)):   # target entity
-            entity_embeddings[scatter_target[i]] = x[scatter_continuous_dict[scatter_target[i]],:] \
+            entity_embeddings[scatter_target[i]] = x[scatter_continuous_dict[scatter_target[i].item()],:] \
                                                              + entity_target_embed[i]
 
         entity_embeddings = F.normalize(entity_embeddings, p=2, dim=1)
