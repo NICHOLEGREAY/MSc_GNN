@@ -85,7 +85,7 @@ class SpGAT_modified(nn.Module):
         self.dropout = dropout
         self.dropout_layer = nn.Dropout(self.dropout)
         self.layer_num = layer_num
-        self.nheads= nheads
+        self.nheads = nheads
         # self.attentions = [SpGraphAttentionLayer(num_nodes, nfeat,
         #                                          nhid,
         #                                          relation_dim,
@@ -93,20 +93,21 @@ class SpGAT_modified(nn.Module):
         #                                          alpha=alpha,
         #                                          concat=True)
         #                    for _ in range(nheads)]
+        # for i, attention in enumerate(self.attentions):
+        #     self.add_module('attention_{}'.format(i), attention)
 
         self.attentions_modified = []
         for l in range(self.layer_num):   # initialize all attention layers with multiple heads
-            attentions_layer = []
             if l == 0:   # the first layer
                 for _ in range(nheads):
-                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nfeat,
+                    self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes, nfeat,
                                                          nhid,
                                                          relation_dim,
                                                          dropout=dropout,
                                                          alpha=alpha,
                                                          concat=True))
             elif l == layer_num-1:   # the final layer
-                attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
+                self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes, nhid * nheads,
                                                                        nfeat,
                                                                        nhid,
                                                                        dropout=dropout,
@@ -114,18 +115,24 @@ class SpGAT_modified(nn.Module):
                                                                        concat=False))
             else:
                 for _ in range(nheads):
-                    attentions_layer.append(SpGraphAttentionLayer_modified(num_nodes,  nhid * nheads,
+                    self.attentions_modified.append(SpGraphAttentionLayer_modified(num_nodes,  nhid * nheads,
                                                                            nhid,
                                                                            nhid,
                                                                            dropout=dropout,
                                                                            alpha=alpha,
                                                                            concat=True))
 
+<<<<<<< HEAD
             for i, attention in enumerate(attentions_layer):
                 self.add_module('attention_{}'.format(i), attention)
 
             self.attentions_modified.append(attentions_layer)
             self.attentions_modified = nn.ModuleList(self.attentions_modified)
+=======
+        for i, attention in enumerate(self.attentions_modified):
+            self.add_module('attention_{}'.format(i), attention)
+
+>>>>>>> origin
 
         # W matrix to convert h_input to h_output dimension
         # self.W = nn.Parameter(torch.zeros(size=(relation_dim, nheads * nhid)))
@@ -189,7 +196,7 @@ class SpGAT_modified(nn.Module):
         combined = torch.cat((edge_list[0],edge_list[1]))
         scatter_entity, counts = combined.unique(return_counts=True)  # automatic sorting
         scatter_source = torch.unique(torch.tensor([s for s in edge_list[1] if s not in scatter_entity[counts == 1]])) # automatic sorting
-        scatter_target = torch.unique(edge_list[0]).cuda()  # automatic sorting
+        scatter_target = torch.unique(edge_list[0])  # automatic sorting
         scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity)   # key: scatter_id, value:continuous_id
         entity_continuous_list = []
         entity_target_continuous = []
@@ -202,8 +209,11 @@ class SpGAT_modified(nn.Module):
         entity_continuous_list.append(entity_source_continuous)
         if (CUDA):
             entity_continuous_list = torch.tensor(entity_continuous_list).cuda()
+<<<<<<< HEAD
 
         print('scatter_source:',scatter_source)
+=======
+>>>>>>> origin
 
         entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
         entity_target_embed = entity_embeddings[scatter_target, :].mm(self.W_target)
@@ -215,10 +225,16 @@ class SpGAT_modified(nn.Module):
         pdb.set_trace()
 
         for l in range(self.layer_num):
+<<<<<<< HEAD
             x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h) for att in self.attentions_modified[l]], dim=1)  # update entity_embeddings
+=======
+>>>>>>> origin
             if l == self.layer_num-1:      # the final layer
+                x = self.attentions_modified[-1](len(scatter_entity), entity_continuous_list, edge_h)
                 x = F.elu(x)
             else:
+                x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h)
+                                for att in self.attentions_modified[l * self.nheads: (l + 1) * self.nheads]], dim=1)  # update entity_embeddings
                 x = self.dropout_layer(x)
                 for i in range(len(scatter_source)):
                     x[scatter_continuous_dict[scatter_source[i].item()],:] = entity_source_embed[i]  # reassign the unique source entities
