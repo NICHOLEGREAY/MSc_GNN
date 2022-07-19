@@ -4,7 +4,6 @@ import torch.nn as nn
 import time
 import torch.nn.functional as F
 from torch.autograd import Variable
-import pdb
 
 
 CUDA = torch.cuda.is_available()
@@ -102,7 +101,7 @@ class SpGraphAttentionLayer(nn.Module):
 
     def forward(self, input, edge, edge_embed, edge_list_nhop, edge_embed_nhop):
         N = input.size()[0]
-        pdb.set_trace()
+
         # Self-attention on the nodes - Shared attention mechanism
         edge = torch.cat((edge[:, :], edge_list_nhop[:, :]), dim=1)    # size : 2 × N   [[rows], [columns]]
         edge_embed = torch.cat(
@@ -179,7 +178,7 @@ class SpGraphAttentionLayer_modified(nn.Module):
         self.leakyrelu = nn.LeakyReLU(self.alpha)
         self.special_spmm_final = SpecialSpmmFinal()
 
-    def forward(self, N, edge_continuous, edge_h):
+    def forward(self, scatter_entity, edge_continuous, edge_h):
         # N is the number of unique entities within this mini-batch   (|source_entity|+|target_entity|)
         # N = input.size()[0]
         # Self-attention on the nodes - Shared attention mechanism
@@ -190,7 +189,7 @@ class SpGraphAttentionLayer_modified(nn.Module):
         # edge_h = torch.cat(
         #     (input[edge[0, :], :], input[edge[1, :], :], edge_embed[:, :]), dim=1).t()
         # edge_h: (2*in_dim + nrela_dim) x E
-
+        N = len(scatter_entity)
         edge_m = self.a.mm(edge_h)  # vector representation of a triple ->Cijk ,shape: out_dim × triple_num
         # edge_m: D * E
 

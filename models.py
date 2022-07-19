@@ -214,11 +214,11 @@ class SpGAT_modified(nn.Module):
         start_time = time.time()
         for l in range(self.layer_num):
             if l == self.layer_num-1:      # the final layer
-                x = self.attentions_modified[-1](len(scatter_entity), entity_continuous_list, edge_h)
+                x = self.attentions_modified[-1](scatter_entity, entity_continuous_list, edge_h)
                 out_relation_1 = out_relation_1.mm(self.W3)
                 x = F.elu(x)
             else:
-                x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h)
+                x = torch.cat([att(scatter_entity, entity_continuous_list, edge_h)
                                 for att in self.attentions_modified[l * self.nheads: (l + 1) * self.nheads]], dim=1)  # update entity_embeddings
                 x = self.dropout_layer(x)
                 if len(scatter_source) != 0:

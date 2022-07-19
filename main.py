@@ -94,7 +94,9 @@ def parse_args():
 
 args = parse_args()
 # %%
-
+print('args.get_2hop:', args.get_2hop)
+print('args.use_2hop:', args.use_2hop)
+print('args.pretrained_emb:', args.pretrained_emb)
 
 def load_data(args, split_dict, relation_array, entity_array):
     # train_data, validation_data, test_data, entity2id, relation2id, headTailSelector, unique_entities_train = build_data(
