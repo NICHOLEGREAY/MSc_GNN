@@ -7,6 +7,7 @@ from layers import SpGraphAttentionLayer, ConvKB
 from layers import SpGraphAttentionLayer_modified
 import numpy as np
 import utils
+import pdb
 
 CUDA = torch.cuda.is_available()  # checking cuda availability
 
@@ -153,7 +154,7 @@ class SpGAT_modified(nn.Module):
         #                                      )
 
 
-    def forward(self, Corpus_, entity_embeddings, relation_embed, edge_list, edge_type):
+    def forward(self, Corpus_, entity_embeddings, relation_embed, edge_list, edge_type, device):
         x = entity_embeddings
 
         # edge_type_nhop [[source_relation1, target_relation2], [], ..]
@@ -201,7 +202,7 @@ class SpGAT_modified(nn.Module):
             entity_source_continuous.append(scatter_continuous_dict[edge_list[1][i].item()])
         entity_continuous_list.append(entity_source_continuous)
         if (CUDA):
-            entity_continuous_list = torch.tensor(entity_continuous_list).cuda()
+            entity_continuous_list = torch.tensor(entity_continuous_list).to(device)
 
         if len(scatter_source) != 0:
             entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
@@ -376,7 +377,7 @@ class SpKBGATModified_modified(nn.Module):
         #         size=(self.entity_in_dim, self.entity_out_dim_1 * self.nheads_GAT_1)))
 
 
-    def forward(self, Corpus_, batch_inputs):    # train_indices_nhop: [[source_entity_train, relation_source, relation_target, target_entity_train],[], ...]
+    def forward(self, Corpus_, batch_inputs, device):    # train_indices_nhop: [[source_entity_train, relation_source, relation_target, target_entity_train],[], ...]
         # getting edge list                                               # batch_inputs:  [ : valid triples for one batch]
         # edge_list = adj[0]   # [[e2_id,..],[e1_id,..]]
         # edge_type = adj[1]   # [r_id, ..]
@@ -390,8 +391,8 @@ class SpKBGATModified_modified(nn.Module):
         edge_type = batch_inputs[:,1]  # [r_id, ..] , size(272115)
 
         if(CUDA):
-            edge_list = edge_list.cuda()
-            edge_type = edge_type.cuda()
+            edge_list = edge_list.to(device)
+            edge_type = edge_type.to(device)
             # edge_list_nhop = edge_list_nhop.cuda()
             # edge_type_nhop = edge_type_nhop.cuda()
 
@@ -408,7 +409,7 @@ class SpKBGATModified_modified(nn.Module):
         start_time = time.time()
         out_entity_1, out_relation_1 = self.sparse_gat_1_modified(
             Corpus_,  self.entity_embeddings, self.relation_embeddings,
-            edge_list, edge_type)
+            edge_list, edge_type, device)
 
         print("SpGAT_modified_time-> {1:.4f} \n".format( time.time() - start_time))
         # mask_indices = torch.unique(batch_inputs[:, 2]).cuda()  # the set containing unique target entities (updated within this batch_inputs)

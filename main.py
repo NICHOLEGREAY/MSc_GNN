@@ -21,7 +21,6 @@ import sys
 import logging
 import time
 import pickle
-
 import ogb
 from ogb.linkproppred import LinkPropPredDataset, Evaluator
 from torch_geometric.data import DataLoader
@@ -31,7 +30,7 @@ import pdb
 
 # %%
 # %%from torchviz import make_dot, make_dot_from_trace
-device = torch.device('cuda:1')
+
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -87,6 +86,8 @@ def parse_args():
                       help="Number of output channels in conv layer")
     args.add_argument("-drop_conv", "--drop_conv", type=float,
                       default=0.0, help="Dropout probability for convolution layer")
+    args.add_argument("-device", "--GPU_device", type=int,
+                      default=0, help="the GPU id for training")
 
     args = args.parse_args()
     return args
@@ -97,6 +98,9 @@ args = parse_args()
 print('args.get_2hop:', args.get_2hop)
 print('args.use_2hop:', args.use_2hop)
 print('args.pretrained_emb:', args.pretrained_emb)
+print('args.GPU_device:', args.GPU_device)
+
+device = torch.device('cuda:{}'.format(args.GPU_device))
 
 def load_data(args, split_dict, relation_array, entity_array):
     # train_data, validation_data, test_data, entity2id, relation2id, headTailSelector, unique_entities_train = build_data(
@@ -137,8 +141,6 @@ split_dict = dataset.get_edge_split()
 #
 entity_array = np.union1d(split_dict['train']['head'],split_dict['train']['tail'])  # 2,500,604 entities
 relation_array = np.array(list(set(split_dict['train']['relation'])))  # 535 relation types
-
-
 nentity = dataset.graph['num_nodes']  # 2,500,604 nodes
 nrelation = int(max(dataset.graph['edge_reltype'])[0])+1    # 535 relation types
 
@@ -272,8 +274,8 @@ def train_gat(args):
 
             if CUDA:
                 train_indices = Variable(
-                    torch.LongTensor(train_indices)).cuda()
-                train_values = Variable(torch.FloatTensor(train_values)).cuda()
+                    torch.LongTensor(train_indices)).to(device)
+                train_values = Variable(torch.FloatTensor(train_values)).to(device)
 
             else:
                 train_indices = Variable(torch.LongTensor(train_indices))
@@ -288,7 +290,7 @@ def train_gat(args):
             batch_inputs = train_indices[:len_pos_triples]
 
             # unique_entities_number = Corpus_.get_unique_entites_number(batch_inputs)
-            entity_embed, relation_embed = model_gat_modified(Corpus_, batch_inputs)  # 时间
+            entity_embed, relation_embed = model_gat_modified(Corpus_, batch_inputs, device)  # 时间
 
             print("Iteration-> {0}  , forward_time-> {1:.4f} ".format(
                 iters, time.time() - start_time_forward))
