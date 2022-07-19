@@ -31,7 +31,7 @@ import pdb
 
 # %%
 # %%from torchviz import make_dot, make_dot_from_trace
-
+device = torch.device('cuda:1')
 
 def parse_args():
     args = argparse.ArgumentParser()
@@ -55,7 +55,7 @@ def parse_args():
     args.add_argument("-u2hop", "--use_2hop", type=bool, default=False)
     args.add_argument("-p2hop", "--partial_2hop", type=bool, default=False)
     args.add_argument("-outfolder", "--output_folder",
-                      default="./checkpoints/wn/out/", help="Folder name to save the models.")
+                      default="./checkpoints/ogb/", help="Folder name to save the models.")
 
     # arguments for GAT
     args.add_argument("-b_gat", "--batch_size_gat", type=int,
@@ -94,9 +94,6 @@ def parse_args():
 
 args = parse_args()
 # %%
-print('args.get_2hop', args.get_2hop)
-print('args.use_2hop',args.use_2hop)
-print('args.pretrained_emb',args.pretrained_emb)
 
 
 def load_data(args, split_dict, relation_array, entity_array):
@@ -144,7 +141,7 @@ nentity = dataset.graph['num_nodes']  # 2,500,604 nodes
 nrelation = int(max(dataset.graph['edge_reltype'])[0])+1    # 535 relation types
 
 with open('./outprint.txt','w') as f:
-    Corpus_, entity_embeddings, relation_embeddings = load_data(args,split_dict, relation_array, entity_array)  #时
+    Corpus_, entity_embeddings, relation_embeddings = load_data(args,split_dict, relation_array, entity_array)  #时间久
 
 
 if(args.get_2hop):
@@ -221,7 +218,7 @@ def train_gat(args):
                                 args.drop_GAT, args.alpha, args.nheads_GAT, args.layer_num)
 
     if CUDA:
-        model_gat_modified.cuda()
+        model_gat_modified.to(device)
 
     optimizer = torch.optim.Adam(
         model_gat_modified.parameters(), lr=args.lr, weight_decay=args.weight_decay_gat)
@@ -303,9 +300,9 @@ def train_gat(args):
 
             start_time_backward = time.time()
             loss.backward()   #时间？
-            print("Iteration-> {0}  , forward_time-> {1:.4f} ".format(
+            print("Iteration-> {0}  , backward_time-> {1:.4f} ".format(
                 iters, time.time() - start_time_backward))
-            f.write("Iteration-> {0}  , forward_time-> {1:.4f} \n".format(
+            f.write("Iteration-> {0}  , backward_time-> {1:.4f} \n".format(
                 iters, time.time() - start_time_backward))
 
             optimizer.step()
@@ -447,3 +444,7 @@ train_conv(args)
   # t2 = time.time()
   # f.write("ConvKB training time: {}\n". format(t2-t1))
 
+  #t1= time.time()
+evaluate_conv(args, Corpus_.unique_entities_train)
+  # t2 = time.time()
+  # f.write("Evaluation time: {}\n". format(t2-t1))

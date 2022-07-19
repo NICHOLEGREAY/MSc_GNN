@@ -134,6 +134,8 @@ class SpGAT_modified(nn.Module):
         if self.layer_num > 2:
             self.W2 = nn.Parameter(torch.zeros(size=(nhid, nhid)))
             nn.init.xavier_uniform_(self.W2.data, gain=1.414)
+        self.W3 = nn.Parameter(torch.zeros(size=(nhid, nfeat)))
+        nn.init.xavier_uniform_(self.W1.data, gain=1.414)
 
         self.W_source = nn.Parameter(torch.zeros(size=(nfeat,  nhid * nheads)))
         nn.init.xavier_uniform_(self.W_source.data, gain=1.414)
@@ -186,8 +188,8 @@ class SpGAT_modified(nn.Module):
         #tansfer scatter entity id in the mini-batch to continous entity id
         combined = torch.cat((edge_list[0],edge_list[1]))
         scatter_entity, counts = combined.unique(return_counts=True)  # automatic sorting
-        scatter_source = torch.unique(torch.tensor([s for s in edge_list[1] if s not in scatter_entity[counts == 1]])) # automatic sorting
         scatter_target = torch.unique(edge_list[0])  # automatic sorting
+        scatter_source = torch.unique(torch.tensor([s for s in edge_list[1] if s not in scatter_target])) # automatic sorting
         scatter_continuous_dict = utils.scatter_map_continuous(scatter_entity)   # key: scatter_id, value:continuous_id
         entity_continuous_list = []
         entity_target_continuous = []
@@ -201,36 +203,40 @@ class SpGAT_modified(nn.Module):
         if (CUDA):
             entity_continuous_list = torch.tensor(entity_continuous_list).cuda()
 
-        entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
+        if len(scatter_source) != 0:
+            entity_source_embed = entity_embeddings[scatter_source, :].mm(self.W_source)
         entity_target_embed = entity_embeddings[scatter_target, :].mm(self.W_target)
 
         edge_embed = relation_embed[edge_type]  # edge_embed (N,dim_relation)
         edge_h = torch.cat(  # edge_h: (2*in_dim + nrela_dim) x E
             (x[edge_list[0, :], :], x[edge_list[1, :], :], edge_embed[:, :]), dim=1).t()
 
+        start_time = time.time()
         for l in range(self.layer_num):
             if l == self.layer_num-1:      # the final layer
                 x = self.attentions_modified[-1](len(scatter_entity), entity_continuous_list, edge_h)
+                out_relation_1 = out_relation_1.mm(self.W3)
                 x = F.elu(x)
             else:
                 x = torch.cat([att(len(scatter_entity), entity_continuous_list, edge_h)
                                 for att in self.attentions_modified[l * self.nheads: (l + 1) * self.nheads]], dim=1)  # update entity_embeddings
                 x = self.dropout_layer(x)
-                for i in range(len(scatter_source)):
-                    x[scatter_continuous_dict[scatter_source[i].item()],:] = entity_source_embed[i]  # reassign the unique source entities
+                if len(scatter_source) != 0:
+                    for i in range(len(scatter_source)):
+                        x[scatter_continuous_dict[scatter_source[i].item()],:] = entity_source_embed[i]  # reassign the unique source entities
                 if l == 0:         # the first layer
                     out_relation_1 = relation_embed.mm(self.W1)   # update relation embeddings
                 else:
-                    out_relation_1 = relation_embed.mm(self.W2)
+                    out_relation_1 = out_relation_1.mm(self.W2)
                 edge_embed = out_relation_1[edge_type]
                 edge_h = torch.cat(
                     (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
+        print("forward propogation of GNN-> {1:.4f} ".format( time.time() - start_time))
 
-        for i in range(len(scatter_target)):   # target entity
-            entity_embeddings[scatter_target[i]] = x[scatter_continuous_dict[scatter_target[i].item()],:] \
-                                                             + entity_target_embed[i]
-
-        entity_embeddings = F.normalize(entity_embeddings, p=2, dim=1)
+        for i in range(len(scatter_target)):  # target entity
+            target_embed = x[scatter_continuous_dict[scatter_target[i].item()], :] \
+                           + entity_target_embed[i]
+            entity_embeddings[scatter_target[i]].data = F.normalize(target_embed.unsqueeze(0), p=2, dim=1)[0].data
         return entity_embeddings, out_relation_1   #nfeat, nhid
 
 
@@ -399,10 +405,12 @@ class SpKBGATModified_modified(nn.Module):
         # self.relation_embeddings.data = F.normalize(
         #     self.relation_embeddings.data, p=2, dim=1)
 
+        start_time = time.time()
         out_entity_1, out_relation_1 = self.sparse_gat_1_modified(
             Corpus_,  self.entity_embeddings, self.relation_embeddings,
             edge_list, edge_type)
 
+        print("SpGAT_modified_time-> {1:.4f} \n".format( time.time() - start_time))
         # mask_indices = torch.unique(batch_inputs[:, 2]).cuda()  # the set containing unique target entities (updated within this batch_inputs)
         # mask = torch.zeros(self.entity_embeddings.shape[0]).cuda()
         # mask[mask_indices] = 1.0
