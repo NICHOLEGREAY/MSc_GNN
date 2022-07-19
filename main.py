@@ -292,7 +292,7 @@ def train_gat(args):
             # unique_entities_number = Corpus_.get_unique_entites_number(batch_inputs)
             entity_embed, relation_embed = model_gat_modified(Corpus_, batch_inputs, device)  # 时间
 
-            print("Iteration-> {0}  , forward_time-> {1:.4f} ".format(
+            print("Iteration-> {0}  , forward_time-> {1:.4f}\n".format(
                 iters, time.time() - start_time_forward))
             f.write("Iteration-> {0}  , forward_time-> {1:.4f} \n".format(
                 iters, time.time() - start_time_forward))
@@ -304,7 +304,7 @@ def train_gat(args):
 
             start_time_backward = time.time()
             loss.backward()   #时间？
-            print("Iteration-> {0}  , backward_time-> {1:.4f} ".format(
+            print("Iteration-> {0}  , backward_time-> {1:.4f} \n".format(
                 iters, time.time() - start_time_backward))
             f.write("Iteration-> {0}  , backward_time-> {1:.4f} \n".format(
                 iters, time.time() - start_time_backward))
@@ -315,7 +315,7 @@ def train_gat(args):
 
             end_time_iter = time.time()
 
-            print("Iteration-> {0}  , Iteration_time-> {1:.4f} , Iteration_loss {2:.4f}".format(
+            print("Iteration-> {0}  , Iteration_time-> {1:.4f} , Iteration_loss {2:.4f} \n".format(
                 iters, end_time_iter - start_time_iter, loss.data.item()))
             f.write("Iteration-> {0}  , Iteration_time-> {1:.4f} , Iteration_loss {2:.4f}\n".format(
                 iters, end_time_iter - start_time_iter, loss.data.item()))
@@ -412,11 +412,11 @@ def train_conv(args):
 
             end_time_iter = time.time()
 
-            print("Iteration-> {0}  , Iteration_time-> {1:.4f} , Iteration_loss {2:.4f}".format(
+            print("Iteration-> {0}  , Iteration_time-> {1:.4f} , Iteration_loss {2:.4f}\n".format(
                 iters, end_time_iter - start_time_iter, loss.data.item()))
 
         scheduler.step()
-        print("Epoch {} , average loss {} , epoch_time {}".format(
+        print("Epoch {} , average loss {} , epoch_time {}\n".format(
             epoch, sum(epoch_loss) / len(epoch_loss), time.time() - start_time))
         epoch_losses.append(sum(epoch_loss) / len(epoch_loss))
 

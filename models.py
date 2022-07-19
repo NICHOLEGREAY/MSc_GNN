@@ -232,12 +232,14 @@ class SpGAT_modified(nn.Module):
                 edge_embed = out_relation_1[edge_type]
                 edge_h = torch.cat(
                     (x[entity_continuous_list[0, :],:], x[entity_continuous_list[1, :], :], edge_embed[:, :]), dim=1).t()
-        print("forward propogation of GNN-> {1:.4f} ".format( time.time() - start_time))
+        print("forward propogation of GNN-> {:.4f} ".format( time.time() - start_time))
 
+        start_time = time.time()
         for i in range(len(scatter_target)):  # target entity
             target_embed = x[scatter_continuous_dict[scatter_target[i].item()], :] \
                            + entity_target_embed[i]
             entity_embeddings[scatter_target[i]].data = F.normalize(target_embed.unsqueeze(0), p=2, dim=1)[0].data
+        print("push updated embedding of target entity tp the history embeddings -> {:.4f} ".format(time.time() - start_time))
         return entity_embeddings, out_relation_1   #nfeat, nhid
 
 
@@ -411,7 +413,7 @@ class SpKBGATModified_modified(nn.Module):
             Corpus_,  self.entity_embeddings, self.relation_embeddings,
             edge_list, edge_type, device)
 
-        print("SpGAT_modified_time-> {1:.4f} \n".format( time.time() - start_time))
+        print("SpGAT_modified_time-> {:.4f} ".format( time.time() - start_time))
         # mask_indices = torch.unique(batch_inputs[:, 2]).cuda()  # the set containing unique target entities (updated within this batch_inputs)
         # mask = torch.zeros(self.entity_embeddings.shape[0]).cuda()
         # mask[mask_indices] = 1.0
