@@ -1,0 +1,37 @@
+Token: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
+
+Done:
+outprint0.txt --> 4 heads 2 layers , ogb0/,  first terminal , is running conv,   GPU0, 18 epoch ;
+
+outprint5.txt: 2 heads, 2 layers, ogb5/ sixth terminal, GPU5, no change createBatch (test), [8/9/12am];
+
+outprint7.txt: 2 heads, 2 layers, ogb7/ , sampled_ratio =0.5 , GPU7, args.sampled: 2 [8/9/23:30]
+outprint8.txt: 2 heads, 2 layers, ogb8/ , sampled_ratio =0.2 , GPU6, args.sampled: 2
+outprint9.txt: 2 heads, 2 layers, ogb9/ , sampled_ratio =0.1 , GPU4, args.sampled: 2
+
+outprint4.txt: 6 heads, 2 layers, ogb4/ fifth terminal, GPU4s,  evlauate on GPU 6
+
+outprint6.txt --> 8 heads 2 layers , ogb6/,   whole model,  GPU6, change to main_c, from 2 epoch(8/10/12am),  evluate ob GPU 7
+
+
+
+
+Running: 
+outprint1.txt  : 2 heads, 4 layers, ogb1/ , second terminal , whohle model ,  GPU0, , start at 233 xxx, 
+outprint2.txt : 2 heads 6 layers, ogb2/, third terminal, GPU2, start at 146
+
+
+
+
+
+outprint3.txt: 2 heads, 8 layers, ogb3/ forth terminal, GPU3, start at 122, 
+outprint11.txt: 2 heads, 2layers, ogb11/ , sampled_ratio =0.05, GPU1, args.sampled: 2
+
+test.txt, GPU7, sample =1, source_entity
+test1.txt ,GPU6, sample=0. source_entity
+
+
+
+outprint10.txt: 2 heads, 2 layers,ogb10/ , GPU7, args.sampled: 1
+
+outprint12.txt: 2 heads, 4 layers, ogb12/ , sampled_ratio =0.2, GPU5, args.sampled: 2, 
