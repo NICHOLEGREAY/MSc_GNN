@@ -1,0 +1,6 @@
+args.nheads_GAT:[2, 2]
+args.layer_num:2
+args.multi_gpu:False
+args.sampled:0:
+Initialised relations and entities randomly
+Initial entity dimensions torch.Size([2500604, 50]) , relation dimensions torch.Size([535, 50])

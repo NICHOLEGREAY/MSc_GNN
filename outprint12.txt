@@ -1,0 +1,88 @@
+args.nheads_GAT:[2, 2]
+args.layer_num:2
+args.multi_gpu:False
+args.sampled:0:
+Iteration-> 1898  , Iteration_time-> 1.4820 , Iteration_loss nan
+Iteration-> 1899  , Iteration_time-> 1.5480 , Iteration_loss nan
+Iteration-> 1900  , Iteration_time-> 1.4987 , Iteration_loss nan
+Iteration-> 1901  , Iteration_time-> 1.5143 , Iteration_loss nan
+Iteration-> 1902  , Iteration_time-> 1.5377 , Iteration_loss nan
+Iteration-> 1903  , Iteration_time-> 1.5086 , Iteration_loss nan
+Iteration-> 1904  , Iteration_time-> 1.5105 , Iteration_loss nan
+Iteration-> 1905  , Iteration_time-> 1.4876 , Iteration_loss nan
+Iteration-> 1906  , Iteration_time-> 1.5152 , Iteration_loss nan
+Iteration-> 1907  , Iteration_time-> 1.6064 , Iteration_loss nan
+Iteration-> 1908  , Iteration_time-> 1.5209 , Iteration_loss nan
+Iteration-> 1909  , Iteration_time-> 1.5000 , Iteration_loss nan
+Iteration-> 1910  , Iteration_time-> 1.4926 , Iteration_loss nan
+Iteration-> 1911  , Iteration_time-> 1.4651 , Iteration_loss nan
+Iteration-> 1912  , Iteration_time-> 1.4675 , Iteration_loss nan
+Iteration-> 1913  , Iteration_time-> 1.4780 , Iteration_loss nan
+Iteration-> 1914  , Iteration_time-> 1.5580 , Iteration_loss nan
+Iteration-> 1915  , Iteration_time-> 1.5033 , Iteration_loss nan
+Iteration-> 1916  , Iteration_time-> 1.5206 , Iteration_loss nan
+Iteration-> 1917  , Iteration_time-> 1.5359 , Iteration_loss nan
+Iteration-> 1918  , Iteration_time-> 1.5186 , Iteration_loss nan
+Iteration-> 1919  , Iteration_time-> 1.4995 , Iteration_loss nan
+Iteration-> 1920  , Iteration_time-> 1.5001 , Iteration_loss nan
+Iteration-> 1921  , Iteration_time-> 1.5016 , Iteration_loss nan
+Iteration-> 1922  , Iteration_time-> 1.5069 , Iteration_loss nan
+Iteration-> 1923  , Iteration_time-> 1.4978 , Iteration_loss nan
+Iteration-> 1924  , Iteration_time-> 1.4811 , Iteration_loss nan
+Iteration-> 1925  , Iteration_time-> 1.4786 , Iteration_loss nan
+Iteration-> 1926  , Iteration_time-> 1.5027 , Iteration_loss nan
+Iteration-> 1927  , Iteration_time-> 1.5350 , Iteration_loss nan
+Iteration-> 1928  , Iteration_time-> 1.4829 , Iteration_loss nan
+Iteration-> 1929  , Iteration_time-> 1.4904 , Iteration_loss nan
+Iteration-> 1930  , Iteration_time-> 1.4888 , Iteration_loss nan
+Iteration-> 1931  , Iteration_time-> 1.5024 , Iteration_loss nan
+Iteration-> 1932  , Iteration_time-> 1.5285 , Iteration_loss nan
+Iteration-> 1933  , Iteration_time-> 1.5105 , Iteration_loss nan
+Iteration-> 1934  , Iteration_time-> 1.5042 , Iteration_loss nan
+Iteration-> 1935  , Iteration_time-> 1.4909 , Iteration_loss nan
+Iteration-> 1936  , Iteration_time-> 1.4778 , Iteration_loss nan
+Iteration-> 1937  , Iteration_time-> 1.4499 , Iteration_loss nan
+Iteration-> 1938  , Iteration_time-> 1.4472 , Iteration_loss nan
+Iteration-> 1939  , Iteration_time-> 1.4976 , Iteration_loss nan
+Iteration-> 1940  , Iteration_time-> 1.4707 , Iteration_loss nan
+Iteration-> 1941  , Iteration_time-> 1.4816 , Iteration_loss nan
+Iteration-> 1942  , Iteration_time-> 1.4793 , Iteration_loss nan
+Iteration-> 1943  , Iteration_time-> 1.4553 , Iteration_loss nan
+Iteration-> 1944  , Iteration_time-> 1.4810 , Iteration_loss nan
+Iteration-> 1945  , Iteration_time-> 1.4871 , Iteration_loss nan
+Iteration-> 1946  , Iteration_time-> 1.5582 , Iteration_loss nan
+Iteration-> 1947  , Iteration_time-> 1.4845 , Iteration_loss nan
+Iteration-> 1948  , Iteration_time-> 1.4882 , Iteration_loss nan
+Iteration-> 1949  , Iteration_time-> 1.5485 , Iteration_loss nan
+Iteration-> 1950  , Iteration_time-> 1.5025 , Iteration_loss nan
+Iteration-> 1951  , Iteration_time-> 1.5021 , Iteration_loss nan
+Iteration-> 1952  , Iteration_time-> 1.4870 , Iteration_loss nan
+Iteration-> 1953  , Iteration_time-> 1.4956 , Iteration_loss nan
+Iteration-> 1954  , Iteration_time-> 1.4766 , Iteration_loss nan
+Iteration-> 1955  , Iteration_time-> 1.5503 , Iteration_loss nan
+Iteration-> 1956  , Iteration_time-> 1.5176 , Iteration_loss nan
+Iteration-> 1957  , Iteration_time-> 1.5280 , Iteration_loss nan
+Iteration-> 1958  , Iteration_time-> 1.5307 , Iteration_loss nan
+Iteration-> 1959  , Iteration_time-> 1.5013 , Iteration_loss nan
+Iteration-> 1960  , Iteration_time-> 1.4843 , Iteration_loss nan
+Iteration-> 1961  , Iteration_time-> 1.4406 , Iteration_loss nan
+Iteration-> 1962  , Iteration_time-> 1.4895 , Iteration_loss nan
+Iteration-> 1963  , Iteration_time-> 1.4828 , Iteration_loss nan
+Iteration-> 1964  , Iteration_time-> 1.4603 , Iteration_loss nan
+Iteration-> 1965  , Iteration_time-> 1.5184 , Iteration_loss nan
+Iteration-> 1966  , Iteration_time-> 0.6789 , Iteration_loss nan
+Epoch 49 , average loss nan , epoch_time 2962.406731367111
+ConvKB training time: 73719.47396278381
+Sampled indices
+test set length 598543 
+
+Current iteration time 243152.7496225834Stats for replacing head are -> Current iteration Mean Reciprocal Rank 0.005847953216316193
+Stats for replacing tail are -> Current iteration Mean Reciprocal Rank 0.005847953216316193
+Averaged stats for replacing head are -> 
+Mean Reciprocal Rank 0.005847953216316193
+
+Averaged stats for replacing tail are -> Mean Reciprocal Rank 0.005847953216316193
+
+Cumulative stats are -> 
+Mean Reciprocal Rank 0.005847953216316193
+Evaluation time: 243154.96932911873
